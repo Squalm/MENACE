@@ -64,6 +64,9 @@ function extract(value::Any, array::Array)
 end # function
 
 # time to rewrite with recursive dfs for tracking which player is on
+"""
+Use recursive DFS to create a set of links and positions which covers every board state possible in hexapawn and links them together.
+"""
 function dfs!(pos::Array, links::Array, seen::Array; player = 1)
 
     for move in get_moves(pos, player)
@@ -104,6 +107,9 @@ black = [[5 for m in l] for l in links]
 
 #== SELF PLAY ==#
 
+"""
+Checks to see if anyone has won or if the game is draw. Returns `"live"` if the game is ongoing, and `0` if the game is a draw.
+"""
 function check_victors(pos::Array)
 
     if -1 in pos[1]
@@ -118,6 +124,9 @@ function check_victors(pos::Array)
     
 end
 
+"""
+Using `links` to get a new `pos` using the weights from `player`.
+"""
 function move(pos::Int, player::Array, links::Array)
     
     _move = [0, 0]
@@ -141,6 +150,10 @@ function move(pos::Int, player::Array, links::Array)
 
 end
 
+"""
+Pits `w` against `b` for one game. Uses `links` for connections. Returns `[w_moves, b_moves, victor]` (victor according to check_victors()).
+If the game goes over 100 moves the function returns `"ERROR"`. There is no real game of hexapawn that lasts longer than ~8 moves.
+"""
 function pit(w::Array, b::Array, links::Array)
 
     current_pos = 1
@@ -172,6 +185,9 @@ function pit(w::Array, b::Array, links::Array)
 
 end # function
 
+"""
+Trains the weights in `w` and `b` for `games` games. Bonuses and punishments can be set using `win`, `lose`, and `draw`.
+"""
 function train!(w::Array, b::Array; games = 100, win = 3, lose = -1, draw = 1, do_plot = false)
 
     data_to_plot = []
