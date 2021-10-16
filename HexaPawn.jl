@@ -1,3 +1,5 @@
+using PlotlyJS
+
 # Use dfs to find all the positions
 
 # Arranged (y, x) not (x, y)
@@ -63,34 +65,6 @@ end # function
 
 # time to rewrite with recursive dfs for tracking which player is on
 function dfs!(pos::Array, links::Array, seen::Array; player = 1)
-    
-    # stack = [pos]
-
-    #== temp
-    while length(stack) > 0
-
-        s = stack[end]
-        pop!(stack)
-
-        if extract(s, seen) == 0
-            append!(seen, s)
-            println("Checking: " * string(s))
-        end # if
-
-        moves = get_moves(s, player)
-
-        i = 1
-        while i <= length(moves)
-            if extract(new_p(s, moves[i]), seen) == 0
-                append!(stack, [new_p(s, moves[i])])
-            end # if
-            i += 1
-        end # while
-        # println("Stack: " * string(stack))
-        # println("Seen: " * string(seen))
-
-    end # while
-    ==#
 
     for move in get_moves(pos, player)
 
@@ -117,5 +91,178 @@ links = [[]]
 
 dfs!(base, links, positions)
 
-println("Ps: " * string(positions))
-println("Links: " * string(links))
+# println("Ps: " * string(positions))
+# println("Links: " * string(links))
+
+println("Done DFS for all positions")
+
+#== SELF PLAY SETUP ==#
+
+white = [[5 for m in l] for l in links]
+black = [[5 for m in l] for l in links]
+# currently the white and black players technically get weights for all the moves, this could change later
+
+#== SELF PLAY ==#
+
+function check_victors(pos::Array)
+
+    if -1 in pos[1]
+        return -1
+    elseif 1 in pos[3]
+        return 1
+    elseif length(get_moves(pos, 1)) == 0 && length(get_moves(pos, -1)) == 0
+        return 0
+    end # if
+
+    return "live"
+    
+end
+
+function move(pos::Int, player::Array, links::Array)
+    
+    _move = [0, 0]
+    if sum(player[pos]) > 0
+        bead = rand(1:sum(player[pos]))
+        i = 1
+        for m in player[pos]
+            if bead > m
+                bead -= m
+            else
+                _move[1] = pos
+                pos = links[pos][i]
+                _move[2] = i
+                break
+            end # if
+            i += 1
+        end # for
+    end # if
+
+    return [pos, _move]
+
+end
+
+function pit(w::Array, b::Array, links::Array)
+
+    current_pos = 1
+    w_moves = []
+    b_moves = []
+
+    for i in 1:100
+
+        if check_victors(positions[current_pos]) != "live"
+            return [w_moves, b_moves, check_victors(positions[current_pos])]
+        end # if
+
+        out = move(current_pos, w, links)
+        current_pos = out[1]
+        push!(w_moves, out[2])
+        
+        if check_victors(positions[current_pos]) != "live"
+            return [w_moves, b_moves, check_victors(positions[current_pos])]
+        end # if
+
+        out = move(current_pos, b, links)
+        current_pos = out[1]
+        push!(b_moves, out[2])
+
+
+    end # for
+
+    return "ERROR"
+
+end # function
+
+function train!(w::Array, b::Array; games = 100, win = 3, lose = -1, draw = 1, do_plot = false)
+
+    data_to_plot = []
+    println("Training")
+
+    for i in 1:games
+
+        out = pit(w, b, links)
+
+        if out != "ERROR"
+
+            w_moves = out[1]
+            b_moves = out[2]
+            result = out[3]
+
+            # look for errors in the moves... because they exist and I don't know why?
+            kill = false
+            for m in w_moves
+                if 0 in m
+                    kill = true
+                    break
+                end # if
+            end # for
+            for m in b_moves
+                if 0 in m
+                    kill = true
+                    break
+                end # if
+            end # for
+
+            if !kill
+
+                # edit weights based on results
+                if result == 1 # W WINS
+                    for m in w_moves
+                        
+                        w[m[1]][m[2]] += win
+
+                    end # for
+                    for m in b_moves
+
+                        b[m[1]][m[2]] += lose
+
+                    end # for
+                elseif result == -1 # B WINS
+                    for m in w_moves
+                        
+                        w[m[1]][m[2]] += lose
+
+                    end # for
+                    for m in b_moves
+
+                        b[m[1]][m[2]] += win
+
+                    end # for
+                else # DRAWS
+                    for m in w_moves
+                        
+                        w[m[1]][m[2]] += draw
+
+                    end # for
+                    for m in b_moves
+
+                        b[m[1]][m[2]] += draw
+
+                    end # for
+                end # if
+            
+            end # if
+
+            if do_plot
+
+                append!(data_to_plot, sum(w[1]))
+
+            end # if
+
+        end # if
+
+    end # for
+
+    println("\n")
+
+    if do_plot
+
+        # plot(data_to_plot, kind="scatter", mode="lines", x=:games, y=:beadsinfirstbox)
+        print(data_to_plot)
+
+    end # if
+
+end # function
+
+train!(white, black, games=1000, do_plot=true)
+println("White: " * string(white))
+println("Black: " * string(black))
