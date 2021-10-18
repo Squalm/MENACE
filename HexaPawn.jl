@@ -1,4 +1,6 @@
-using PlotlyJS
+#using PlotlyJS
+using Plots
+using UnicodePlots
 
 # Use dfs to find all the positions
 
@@ -101,8 +103,7 @@ println("Done DFS for all positions")
 
 #== SELF PLAY SETUP ==#
 
-white = [[5 for m in l] for l in links]
-black = [[5 for m in l] for l in links]
+weights = [[5 for m in l] for l in links]
 # currently the white and black players technically get weights for all the moves, this could change later
 
 #== SELF PLAY ==#
@@ -188,9 +189,9 @@ end # function
 """
 Trains the weights in `w` and `b` for `games` games. Bonuses and punishments can be set using `win`, `lose`, and `draw`.
 """
-function train!(w::Array, b::Array; games = 100, win = 3, lose = -1, draw = 1, do_plot = false)
+function train!(w::Array, b::Array; games = 200, win = 3, lose = -1, draw = 1, do_plot = false)
 
-    data_to_plot = []
+    data_to_plot = [[], []]
     println("Training")
 
     for i in 1:games
@@ -260,7 +261,8 @@ function train!(w::Array, b::Array; games = 100, win = 3, lose = -1, draw = 1, d
 
             if do_plot
 
-                append!(data_to_plot, sum(w[1]))
+                append!(data_to_plot[1], sum(w[1]))
+                append!(data_to_plot[2], sum(w[2]))
 
             end # if
 
@@ -272,13 +274,28 @@ function train!(w::Array, b::Array; games = 100, win = 3, lose = -1, draw = 1, d
 
     if do_plot
 
-        # plot(data_to_plot, kind="scatter", mode="lines", x=:games, y=:beadsinfirstbox)
-        print(data_to_plot)
+        plt = lineplot([i for i in 1:length(data_to_plot[1])], [x for x in data_to_plot[1]], name = "First box", xlabel = "Games", ylabel = "Beads")
+        lineplot!(plt, [i for i in 1:length(data_to_plot[2])], [x for x in data_to_plot[2]], name = "Second box")
+        println(plt)
+        filtered = [[extract(u, w), sum(u)] for u in w if sum(u) / length(u) != 5 && sum(u) != 0][1:20]
+        plt = barplot([string(i[1]) for i in filtered], [x[2] for x in filtered], title = "Sum in box")
+        println(plt)
 
     end # if
 
 end # function
 
-train!(white, black, games=1000, do_plot=true)
-println("White: " * string(white))
-println("Black: " * string(black))
+train!(weights, weights, games=20, do_plot=true)
+# println("Final Weights: " * string(weights))
+
+#== ALLOW THE HUMAN TO PLAY IT ==#
+
+function play(w::Array)
+    
+    for i in 1:100
+
+        println("Move " * string(i))
+
+    end # for
+
+end # function
