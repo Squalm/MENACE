@@ -11,7 +11,7 @@ function get_moves(position::Array, to_move::Int)
     moves = []
 
     for y in 1:length(position)
-        for x in 1:length(position)
+        for x in 1:length(position[y])
 
             if position[y][x] == to_move
                 
@@ -71,7 +71,7 @@ function check_victors(pos::Array)
 
     if -1 in pos[1]
         return -1
-    elseif 1 in pos[3]
+    elseif 1 in pos[end]
         return 1
     elseif length(get_moves(pos, 1)) == 0 && length(get_moves(pos, -1)) == 0
         return 0
@@ -86,21 +86,21 @@ Use recursive DFS to create a set of links and positions which covers every boar
 """
 function dfs!(pos::Array, links::Array, seen::Array; player = 1)
 
-    for move in get_moves(pos, player)
+    for m in get_moves(pos, player)
 
         if extract(new_p(pos, move), seen) == 0
             # println("Checking: " * string(new_p(pos, move)))
             # println("Links: " * string(links))
 
-            append!(seen, [new_p(pos, move)])
+            append!(seen, [new_p(pos, m)])
             push!(links, [])
 
-            if check_victors(new_p(pos, move)) == "live"
-                dfs!(new_p(pos, move), links, seen, player=player*-1)
+            if check_victors(new_p(pos, m)) == "live"
+                dfs!(new_p(pos, m), links, seen, player=player*-1)
             end # If
         end # if
 
-        append!(links[extract(pos, seen)], extract(new_p(pos, move), seen))
+        append!(links[extract(pos, seen)], extract(new_p(pos, m), seen))
 
     end # for
 
@@ -109,15 +109,15 @@ end # function
 #== SELF PLAY ==#
 
 """
-Using `links` to get a new `pos` using the weights from `player`.
+Using `links` to get a new `pos` using the weights from `w`.
 """
-function move(pos::Int, player::Array, links::Array)
+function move(pos::Int, w::Array, links::Array)
     
     _move = [0, 0]
-    if sum(player[pos]) > 0
-        bead = rand(1:sum(player[pos]))
+    if sum(w[pos]) > 0
+        bead = rand(1:sum(w[pos]))
         i = 1
-        for m in player[pos]
+        for m in w[pos]
             if bead > m
                 bead -= m
             else
@@ -297,7 +297,7 @@ Prints out the current position without all those ugly brackets.
 """
 function format(pos::Array)
     
-    formatted = [[], [], []]
+    formatted = [[] for i in 1:length(pos)]
     for row in 1:length(pos)
         for square in pos[row]
             if square == 0
@@ -311,7 +311,10 @@ function format(pos::Array)
     end # for
 
     for row in formatted
-        println(Crayon(reset = true), string(row[1]) * " " * string(row[2]) * " " * string(row[3]))
+        for square in row
+            print(Crayon(reset = true), square * " ")
+        end # for
+        println()
     end # for
 
 end # function
@@ -383,7 +386,23 @@ function play(w::Array, links::Array, positions::Array; base = [[1, 1, 1], [0, 0
 end # function
 
 # Setup
-base = [[1, 1, 1], [0, 0, 0], [-1, -1, -1]]
+println("Dimension to train for (max 9)? [y,x]")
+dims = readline()
+base = []
+for i in 1:parse(Int, dims[1])
+    push!(base, Int[])
+    for x in 1:parse(Int, dims[3])
+        if i == 1
+            push!(base[i], 1)
+        elseif i == parse(Int, dims[1])
+            push!(base[i], -1)
+        else
+            push!(base[i], 0)
+        end # if
+    end # for
+end # for 
+println(base)
+
 player = 1
 positions = [base]
 links = [[]]
@@ -393,11 +412,14 @@ dfs!(base, links, positions)
 println("Got " * string(length(positions)) * " positions")
 
 # Setup weights
-weights = [[5 for m in l] for l in links]
+weights = [Int[2*length(base) for m in l] for l in links]
 
 # Self-play
 println("How many games to self-play?")
 train!(weights, weights, games=parse(Int, readline()), do_plot=true)
 
 # Human play
-play(weights, links, positions)
+while true
+    play(weights, links, positions, base=base)
+    println(Crayon(reset = true), "")
+end # while
