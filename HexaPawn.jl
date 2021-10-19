@@ -1,12 +1,13 @@
 #using PlotlyJS
 using Plots
 using UnicodePlots
+using Crayons
 
 # Use dfs to find all the positions
 
 # Arranged (y, x) not (x, y)
 """
-Gets all the positive move the player (`to_move`) can make in a `position`.
+Gets all the moves the player (`to_move`) can make in a `position`.
 """
 function get_moves(position::Array, to_move::Int)
     moves = []
@@ -65,7 +66,23 @@ function extract(value::Any, array::Array)
     return 0
 end # function
 
-# time to rewrite with recursive dfs for tracking which player is on
+"""
+Checks to see if anyone has won or if the game is draw. Returns `"live"` if the game is ongoing, and `0` if the game is a draw.
+"""
+function check_victors(pos::Array)
+
+    if -1 in pos[1]
+        return -1
+    elseif 1 in pos[3]
+        return 1
+    elseif length(get_moves(pos, 1)) == 0 && length(get_moves(pos, -1)) == 0
+        return 0
+    end # if
+
+    return "live"
+    
+end
+
 """
 Use recursive DFS to create a set of links and positions which covers every board state possible in hexapawn and links them together.
 """
@@ -80,7 +97,9 @@ function dfs!(pos::Array, links::Array, seen::Array; player = 1)
             append!(seen, [new_p(pos, move)])
             push!(links, [])
 
-            dfs!(new_p(pos, move), links, seen, player=player*-1)
+            if check_victors(new_p(pos, move)) == "live"
+                dfs!(new_p(pos, move), links, seen, player=player*-1)
+            end # If
         end # if
 
         append!(links[extract(pos, seen)], extract(new_p(pos, move), seen))
@@ -99,7 +118,7 @@ dfs!(base, links, positions)
 # println("Ps: " * string(positions))
 # println("Links: " * string(links))
 
-println("Done DFS for all positions")
+println("Got " * string(length(positions)) * " positions")
 
 #== SELF PLAY SETUP ==#
 
@@ -107,23 +126,6 @@ weights = [[5 for m in l] for l in links]
 # currently the white and black players technically get weights for all the moves, this could change later
 
 #== SELF PLAY ==#
-
-"""
-Checks to see if anyone has won or if the game is draw. Returns `"live"` if the game is ongoing, and `0` if the game is a draw.
-"""
-function check_victors(pos::Array)
-
-    if -1 in pos[1]
-        return -1
-    elseif 1 in pos[3]
-        return 1
-    elseif length(get_moves(pos, 1)) == 0 && length(get_moves(pos, -1)) == 0
-        return 0
-    end # if
-
-    return "live"
-    
-end
 
 """
 Using `links` to get a new `pos` using the weights from `player`.
@@ -191,7 +193,7 @@ Trains the weights in `w` and `b` for `games` games. Bonuses and punishments can
 """
 function train!(w::Array, b::Array; games = 200, win = 3, lose = -1, draw = 1, do_plot = false)
 
-    data_to_plot = [[], []]
+    data_to_plot = [[] for l in w]
     println("Training")
 
     for i in 1:games
@@ -261,8 +263,9 @@ function train!(w::Array, b::Array; games = 200, win = 3, lose = -1, draw = 1, d
 
             if do_plot
 
-                append!(data_to_plot[1], sum(w[1]))
-                append!(data_to_plot[2], sum(w[2]))
+                for d in w
+                    append!(data_to_plot[extract(d, w)], sum(d))
+                end # for
 
             end # if
 
@@ -274,28 +277,128 @@ function train!(w::Array, b::Array; games = 200, win = 3, lose = -1, draw = 1, d
 
     if do_plot
 
-        plt = lineplot([i for i in 1:length(data_to_plot[1])], [x for x in data_to_plot[1]], name = "First box", xlabel = "Games", ylabel = "Beads")
-        lineplot!(plt, [i for i in 1:length(data_to_plot[2])], [x for x in data_to_plot[2]], name = "Second box")
-        println(plt)
-        filtered = [[extract(u, w), sum(u)] for u in w if sum(u) / length(u) != 5 && sum(u) != 0][1:20]
+        # plt = lineplot([i for i in 1:length(data_to_plot[1])], [x for x in data_to_plot[1]], name = "box 1", xlabel = "Games", ylabel = "Beads")
+        # println(plt)
+
+        filtered = sort([[extract(u, w), sum(u)] for u in w if sum(u) / length(u) != 5 && sum(u) != 0], by= x -> x[2], rev = true)[1:20]
         plt = barplot([string(i[1]) for i in filtered], [x[2] for x in filtered], title = "Sum in box")
+        println(plt)
+
+        plt = lineplot([i for i in 1:length(data_to_plot[2])], [x for x in data_to_plot[2]], name = "box 2", xlabel = "Games")
+        for box in filtered[1:10]
+            lineplot!(plt, [i for i in 1:length(data_to_plot[box[1]])], data_to_plot[box[1]], name = "box " * string(box[1]))
+        end # for
         println(plt)
 
     end # if
 
 end # function
 
-train!(weights, weights, games=20, do_plot=true)
+train!(weights, weights, games=150, do_plot=true)
 # println("Final Weights: " * string(weights))
 
 #== ALLOW THE HUMAN TO PLAY IT ==#
 
-function play(w::Array)
+"""
+Takes a move typed by someone in the format: `Y X, Y X`
+"""
+function human_move(raw::String)
     
+    move = [[0, 0], [0, 0]]
+    move[1][1] = parse(Int, string(raw[1]))
+    move[1][2] = parse(Int, string(raw[3]))
+    move[2][1] = parse(Int, string(raw[6]))
+    move[2][2] = parse(Int, string(raw[8]))
+
+    return move
+
+end # function
+
+"""
+Prints out the current position without all those ugly brackets.
+"""
+function format(pos::Array)
+    
+    formatted = [[], [], []]
+    for row in 1:length(pos)
+        for square in pos[row]
+            if square == 0
+                append!(formatted[row], "-")
+            elseif square == 1
+                append!(formatted[row], "W")
+            elseif square == -1
+                append!(formatted[row], "B")
+            end # if
+        end # for
+    end # for
+
+    for row in formatted
+        println(Crayon(reset = true), string(row[1]) * " " * string(row[2]) * " " * string(row[3]))
+    end # for
+
+end # function
+
+function play(w::Array, links::Array, positions::Array; base = [[1, 1, 1], [0, 0, 0], [-1, -1, -1]])
+    
+    println("You play as W/B? ")
+    human = uppercase(readline())
+    pos = deepcopy(base)
+
+    blue = (150, 150, 255)
+    green = (100, 255, 100)
+
     for i in 1:100
 
-        println("Move " * string(i))
+        println()
+        println(Crayon(foreground = green, bold = true), "Move " * string(i))
+        
+        format(pos)
+
+        if human == "W"
+
+            println(Crayon(foreground = blue, bold = false), "Your move? ")
+            _move = human_move(readline())
+            println(_move)
+            println()
+            pos = new_p(pos, _move)
+            format(pos)
+
+            if check_victors(pos) != "live"
+                println(Crayon(foreground = green, bold = true), "The game has ended")
+                break
+            end # if
+
+        end # if
+
+        println()
+        println("ML to move...")
+        c_move = move(extract(pos, positions), w, links)
+        pos = positions[c_move[1]]
+        format(pos)
+
+        if check_victors(pos) != "live"
+            println(Crayon(foreground = green, bold = true), "The game has ended")
+            break
+        end # if
+
+        if human == "B"
+
+            println(Crayon(foreground = blue, bold = false), "Your move? ")
+            _move = human_move(readline())
+            println(_move)
+            println()
+            pos = new_p(pos, _move)
+            format(pos)
+
+            if check_victors(pos) != "live"
+                println(Crayon(foreground = green, bold = true), "The game has ended")
+                break
+            end # if
+
+        end # if
 
     end # for
 
 end # function
+
+play(weights, links, positions)
