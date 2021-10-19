@@ -136,7 +136,7 @@ end
 
 """
 Pits `w` against `b` for one game. Uses `links` for connections. Returns `[w_moves, b_moves, victor]` (victor according to check_victors()).
-If the game goes over 100 moves the function returns `"ERROR"`. There is no real game of hexapawn that lasts longer than ~8 moves.
+If the game goes over 200 moves the function returns `"ERROR"`. Real games of hexapawn do not last very long.
 """
 function pit(w::Array, b::Array, links::Array)
 
@@ -144,7 +144,7 @@ function pit(w::Array, b::Array, links::Array)
     w_moves = []
     b_moves = []
 
-    for i in 1:100
+    for i in 1:200
 
         if check_victors(positions[current_pos]) != "live"
             return [w_moves, b_moves, check_victors(positions[current_pos])]
@@ -172,7 +172,7 @@ end # function
 """
 Trains the weights in `w` and `b` for `games` games. Bonuses and punishments can be set using `win`, `lose`, and `draw`.
 """
-function train!(w::Array, b::Array; games = 200, win = 3, lose = -1, draw = 1, do_plot = false)
+function train!(w::Array, b::Array; games = 200, win = 3, lose = -1, draw = 1, do_plot = false, live_feedback = false)
 
     data_to_plot = [[] for l in w]
     println("Training")
@@ -248,6 +248,12 @@ function train!(w::Array, b::Array; games = 200, win = 3, lose = -1, draw = 1, d
                     append!(data_to_plot[extract(d, w)], sum(d))
                 end # for
 
+            end # if
+
+            if live_feedback
+                if i % 1000 == 0
+                    println("Done " * string(i) * " games")
+                end # if
             end # if
 
         end # if
@@ -385,6 +391,8 @@ function play(w::Array, links::Array, positions::Array; base = [[1, 1, 1], [0, 0
 
 end # function
 
+#== If you wanted to fiddle with the additional params, chnaces are you only need to touch what's below this line ==#
+
 # Setup
 println("Dimension to train for (max 9)? [y,x]")
 dims = readline()
@@ -416,7 +424,7 @@ weights = [Int[2*length(base) for m in l] for l in links]
 
 # Self-play
 println("How many games to self-play?")
-train!(weights, weights, games=parse(Int, readline()), do_plot=true)
+train!(weights, weights, games=parse(Int, readline()), do_plot=true, live_feedback=true)
 
 # Human play
 while true
