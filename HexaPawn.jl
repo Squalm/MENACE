@@ -88,7 +88,7 @@ function dfs!(pos::Array, links::Array, seen::Array; player = 1)
 
     for m in get_moves(pos, player)
 
-        if extract(new_p(pos, move), seen) == 0
+        if extract(new_p(pos, m), seen) == 0
             # println("Checking: " * string(new_p(pos, move)))
             # println("Links: " * string(links))
 
