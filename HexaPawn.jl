@@ -10,8 +10,8 @@ Gets all the moves the player (`to_move`) can make in a `position`.
 function get_moves(position::Array, to_move::Int)
     moves = []
 
-    for y in 1:3
-        for x in 1:3
+    for y in 1:length(position)
+        for x in 1:length(position)
 
             if position[y][x] == to_move
                 
@@ -105,19 +105,6 @@ function dfs!(pos::Array, links::Array, seen::Array; player = 1)
     end # for
 
 end # function
-
-base = [[1, 1, 1], [0, 0, 0], [-1, -1, -1]]
-player = 1
-positions = [base]
-links = [[]]
-
-dfs!(base, links, positions)
-
-println("Got " * string(length(positions)) * " positions")
-
-#== SELF PLAY SETUP ==#
-
-weights = [[5 for m in l] for l in links]
 
 #== SELF PLAY ==#
 
@@ -288,10 +275,6 @@ function train!(w::Array, b::Array; games = 200, win = 3, lose = -1, draw = 1, d
 
 end # function
 
-println("How many games to self-play?")
-train!(weights, weights, games=parse(Int, readline()), do_plot=true)
-# println("Final Weights: " * string(weights))
-
 #== ALLOW THE HUMAN TO PLAY IT ==#
 
 """
@@ -399,4 +382,22 @@ function play(w::Array, links::Array, positions::Array; base = [[1, 1, 1], [0, 0
 
 end # function
 
+# Setup
+base = [[1, 1, 1], [0, 0, 0], [-1, -1, -1]]
+player = 1
+positions = [base]
+links = [[]]
+
+# DFS
+dfs!(base, links, positions)
+println("Got " * string(length(positions)) * " positions")
+
+# Setup weights
+weights = [[5 for m in l] for l in links]
+
+# Self-play
+println("How many games to self-play?")
+train!(weights, weights, games=parse(Int, readline()), do_plot=true)
+
+# Human play
 play(weights, links, positions)
