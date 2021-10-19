@@ -75,6 +75,10 @@ function check_victors(pos::Array)
         return 1
     elseif length(get_moves(pos, 1)) == 0 && length(get_moves(pos, -1)) == 0
         return 0
+    elseif length(get_moves(pos, 1)) == 0
+        return -1
+    elseif length(get_moves(pos, -1)) == 0
+        return 1
     end # if
 
     return "live"
@@ -93,7 +97,7 @@ function dfs!(pos::Array, links::Array, seen::Array; player = 1)
             # println("Links: " * string(links))
 
             append!(seen, [new_p(pos, m)])
-            push!(links, [])
+            push!(links, Int[])
 
             if check_victors(new_p(pos, m)) == "live"
                 dfs!(new_p(pos, m), links, seen, player=player*-1)
@@ -165,6 +169,13 @@ function pit(w::Array, b::Array, links::Array)
 
     end # for
 
+    #==
+    println("Got an error")
+    println("Position #: " * string(current_pos))
+    println("Position: " * string(positions[current_pos]))
+    println("Links: " * string(links[current_pos]))
+    println("Links of links: " * string([links[p] for p in links[current_pos]]))
+    ==#
     return "ERROR"
 
 end # function
@@ -187,61 +198,42 @@ function train!(w::Array, b::Array; games = 200, win = 3, lose = -1, draw = 1, d
             b_moves = out[2]
             result = out[3]
 
-            # look for errors in the moves... because they exist and I don't know why?
-            kill = false
-            for m in w_moves
-                if 0 in m
-                    kill = true
-                    break
-                end # if
-            end # for
-            for m in b_moves
-                if 0 in m
-                    kill = true
-                    break
-                end # if
-            end # for
+            # edit weights based on results
+            if result == 1 # W WINS
+                for m in w_moves
+                    
+                    w[m[1]][m[2]] += win
 
-            if !kill
+                end # for
+                for m in b_moves
 
-                # edit weights based on results
-                if result == 1 # W WINS
-                    for m in w_moves
-                        
-                        w[m[1]][m[2]] += win
+                    b[m[1]][m[2]] += lose
 
-                    end # for
-                    for m in b_moves
+                end # for
+            elseif result == -1 # B WINS
+                for m in w_moves
+                    
+                    w[m[1]][m[2]] += lose
 
-                        b[m[1]][m[2]] += lose
+                end # for
+                for m in b_moves
 
-                    end # for
-                elseif result == -1 # B WINS
-                    for m in w_moves
-                        
-                        w[m[1]][m[2]] += lose
+                    b[m[1]][m[2]] += win
 
-                    end # for
-                    for m in b_moves
+                end # for
+            else # DRAWS
+                for m in w_moves
+                    
+                    w[m[1]][m[2]] += draw
 
-                        b[m[1]][m[2]] += win
+                end # for
+                for m in b_moves
 
-                    end # for
-                else # DRAWS
-                    for m in w_moves
-                        
-                        w[m[1]][m[2]] += draw
+                    b[m[1]][m[2]] += draw
 
-                    end # for
-                    for m in b_moves
-
-                        b[m[1]][m[2]] += draw
-
-                    end # for
-                end # if
-            
+                end # for
             end # if
-
+            
             if do_plot
 
                 for d in w
@@ -418,6 +410,12 @@ links = [[]]
 # DFS
 dfs!(base, links, positions)
 println("Got " * string(length(positions)) * " positions")
+
+#==
+for l in 1:length(links)
+    println(string(l) * " : " * string(links[l]))
+end # for
+==#
 
 # Setup weights
 weights = [Int[2*length(base) for m in l] for l in links]
