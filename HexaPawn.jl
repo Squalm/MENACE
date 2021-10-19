@@ -3,8 +3,6 @@ using Plots
 using UnicodePlots
 using Crayons
 
-# Use dfs to find all the positions
-
 # Arranged (y, x) not (x, y)
 """
 Gets all the moves the player (`to_move`) can make in a `position`.
@@ -115,15 +113,11 @@ links = [[]]
 
 dfs!(base, links, positions)
 
-# println("Ps: " * string(positions))
-# println("Links: " * string(links))
-
 println("Got " * string(length(positions)) * " positions")
 
 #== SELF PLAY SETUP ==#
 
 weights = [[5 for m in l] for l in links]
-# currently the white and black players technically get weights for all the moves, this could change later
 
 #== SELF PLAY ==#
 
@@ -294,13 +288,14 @@ function train!(w::Array, b::Array; games = 200, win = 3, lose = -1, draw = 1, d
 
 end # function
 
-train!(weights, weights, games=150, do_plot=true)
+println("How many games to self-play?")
+train!(weights, weights, games=parse(Int, readline()), do_plot=true)
 # println("Final Weights: " * string(weights))
 
 #== ALLOW THE HUMAN TO PLAY IT ==#
 
 """
-Takes a move typed by someone in the format: `Y X, Y X`
+Takes a move typed by someone in the format: `Y X, Y X` where 1 1 is the top left.
 """
 function human_move(raw::String)
     
@@ -338,6 +333,9 @@ function format(pos::Array)
 
 end # function
 
+"""
+Does all the pretty human stuff to let humans play a game against the alg.
+"""
 function play(w::Array, links::Array, positions::Array; base = [[1, 1, 1], [0, 0, 0], [-1, -1, -1]])
     
     println("You play as W/B? ")
