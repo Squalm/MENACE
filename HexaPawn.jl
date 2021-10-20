@@ -388,6 +388,10 @@ end # function
 # Setup
 println("Dimension to train for (max 9)? [y,x]")
 dims = readline()
+
+println("How many games to self-play?")
+games_to = parse(Int, readline())
+
 base = []
 for i in 1:parse(Int, dims[1])
     push!(base, Int[])
@@ -421,8 +425,7 @@ end # for
 weights = [Int[2*length(base) for m in l] for l in links]
 
 # Self-play
-println("How many games to self-play?")
-train!(weights, weights, games=parse(Int, readline()), do_plot=true, live_feedback=true)
+train!(weights, weights, games=games_to, do_plot=true, live_feedback=true)
 
 # Human play
 while true
