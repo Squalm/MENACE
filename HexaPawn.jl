@@ -85,6 +85,13 @@ function check_victors(pos::Array)
     
 end
 
+function reflect(pos::Array)
+    r = [Int[], Int[], Int[]]
+    for row in 1:length(pos)
+        r[row] = [pos[row][end - sq + 1] for sq in 1:length(pos[row])]
+    end # for
+end # function
+
 """
 Use recursive DFS to create a set of links and positions which covers every board state possible in hexapawn and links them together.
 """
@@ -132,11 +139,13 @@ function move(pos::Int, w::Array, links::Array)
             end # if
             i += 1
         end # for
+    else 
+        pos = links[pos][1]
     end # if
 
     return [pos, _move]
 
-end
+end # function
 
 """
 Pits `w` against `b` for one game. Uses `links` for connections. Returns `[w_moves, b_moves, victor]` (victor according to check_victors()).
@@ -169,13 +178,10 @@ function pit(w::Array, b::Array, links::Array)
 
     end # for
 
-    #==
     println("Got an error")
     println("Position #: " * string(current_pos))
     println("Position: " * string(positions[current_pos]))
     println("Links: " * string(links[current_pos]))
-    println("Links of links: " * string([links[p] for p in links[current_pos]]))
-    ==#
     return "ERROR"
 
 end # function
@@ -233,6 +239,18 @@ function train!(w::Array, b::Array; games = 200, win = 3, lose = -1, draw = 1, d
 
                 end # for
             end # if
+
+            # make sure there is at least one bead in the box
+            for m in w_moves
+                if sum(w[m[1]]) <= 0
+                    w[m[1]][1] == 1
+                end # if
+            end # for
+            for m in b_moves
+                if sum(b[m[1]]) <= 0
+                    b[m[1]][1] == 1
+                end # if
+            end # for
             
             if do_plot
 
