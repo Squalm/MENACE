@@ -2,6 +2,7 @@
 using Plots
 using UnicodePlots
 using Crayons
+using ProgressBars
 
 # Arranged (y, x) not (x, y)
 """
@@ -189,12 +190,12 @@ end # function
 """
 Trains the weights in `w` and `b` for `games` games. Bonuses and punishments can be set using `win`, `lose`, and `draw`.
 """
-function train!(w::Array, b::Array; games = 200, win = 3, lose = -1, draw = 1, do_plot = false, live_feedback = false)
+function train!(w::Array, b::Array; games = 200, win = 3, lose = -1, draw = 1, do_plot = false)
 
     data_to_plot = [[] for l in w]
     println("Training")
 
-    for i in 1:games
+    for i in ProgressBar(1:games)
 
         out = pit(w, b, links)
 
@@ -260,17 +261,9 @@ function train!(w::Array, b::Array; games = 200, win = 3, lose = -1, draw = 1, d
 
             end # if
 
-            if live_feedback
-                if i % 1000 == 0
-                    println("Done " * string(i) * " games")
-                end # if
-            end # if
-
         end # if
 
     end # for
-
-    println("\n")
 
     if do_plot
 
@@ -281,11 +274,14 @@ function train!(w::Array, b::Array; games = 200, win = 3, lose = -1, draw = 1, d
         plt = barplot([string(i[1]) for i in filtered], [x[2] for x in filtered], title = "Sum in box")
         println(plt)
 
-        plt = lineplot([i for i in 1:length(data_to_plot[2])], [x for x in data_to_plot[2]], name = "box 2", xlabel = "Games")
-        for box in filtered[1:10]
-            lineplot!(plt, [i for i in 1:length(data_to_plot[box[1]])], data_to_plot[box[1]], name = "box " * string(box[1]))
-        end # for
-        println(plt)
+        plt = scatter([y for y in data_to_plot[1]])
+        Plots.savefig(plt, "box1")
+
+        #plt = lineplot([i for i in 1:length(data_to_plot[2])], [x for x in data_to_plot[2]], name = "box 2", xlabel = "Games")
+        #for box in filtered[1:10]
+        #    lineplot!(plt, [i for i in 1:length(data_to_plot[box[1]])], data_to_plot[box[1]], name = "box " * string(box[1]))
+        #end # for
+        #println(plt)
 
     end # if
 
@@ -443,7 +439,7 @@ end # for
 weights = [Int[2*length(base) for m in l] for l in links]
 
 # Self-play
-train!(weights, weights, games=games_to, do_plot=true, live_feedback=true)
+train!(weights, weights, games=games_to, do_plot=true)
 
 # Human play
 while true
