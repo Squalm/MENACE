@@ -3,6 +3,7 @@ using Plots
 using UnicodePlots
 using Crayons
 using ProgressBars
+using StatsBase
 
 # Arranged (y, x) not (x, y)
 """
@@ -125,24 +126,14 @@ Using `links` to get a new `pos` using the weights from `w`.
 """
 function move(pos::Int, w::Array, links::Array)
     
-    _move = [0, 0]
+    _move = [pos, 0]
     if sum(w[pos]) > 0
-        bead = rand(1:sum(w[pos]))
-        i = 1
-        for m in w[pos]
-            if bead > m
-                bead -= m
-            else
-                _move[1] = pos
-                pos = links[pos][i]
-                _move[2] = i
-                break
-            end # if
-            i += 1
-        end # for
+        pos = sample(links[pos], fweights(w[pos]), 1)[1]
     else 
         pos = links[pos][1]
     end # if
+
+    _move[2] = extract(pos, links[_move[1]])
 
     return [pos, _move]
 
@@ -214,13 +205,13 @@ function train!(w::Array, b::Array; games = 200, win = 3, lose = -1, draw = 1, d
                 end # for
                 for m in b_moves
 
-                    b[m[1]][m[2]] += lose
+                    b[m[1]][m[2]] = max(b[m[1]][m[2]] + lose, 0)
 
                 end # for
             elseif result == -1 # B WINS
                 for m in w_moves
                     
-                    w[m[1]][m[2]] += lose
+                    w[m[1]][m[2]] = max(w[m[1]][m[2]] + lose, 0)
 
                 end # for
                 for m in b_moves
@@ -352,9 +343,17 @@ function play(w::Array, links::Array, positions::Array; base = [[1, 1, 1], [0, 0
 
         if human == "W"
 
-            println(Crayon(foreground = blue, bold = false), "Your move? ")
-            _move = human_move(readline())
-            println(_move)
+            valid = false
+            while !valid
+                println(Crayon(foreground = blue, bold = false), "Your move? ")
+                _move = human_move(readline())
+                println(_move)
+                println("^ This doesn't seem right, please input a valid move. Y X, Y X")
+                if extract(new_p(pos, _move), positions) != 0
+                    valid = true
+                end # if
+            end # while
+
             println()
             pos = new_p(pos, _move)
             format(pos)
@@ -428,12 +427,6 @@ links = [[]]
 # DFS
 dfs!(base, links, positions)
 println("Got " * string(length(positions)) * " positions")
-
-#==
-for l in 1:length(links)
-    println(string(l) * " : " * string(links[l]))
-end # for
-==#
 
 # Setup weights
 weights = [Int[2*length(base) for m in l] for l in links]
